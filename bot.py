@@ -1,5 +1,3 @@
-
-Bot · PY
 import os
 import threading
 import logging
