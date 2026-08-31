@@ -121,11 +121,11 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
  
 # ============ ASOSIY ISHGA TUSHIRISH ============
 def main():
-    if TELEGRAM_BOT_TOKEN == "SIZNING_TELEGRAM_TOKENINGIZ":
+    if TELEGRAM_BOT_TOKEN == "TELEGRAM_BOT_TOKEN":
         raise ValueError(
             "TELEGRAM_BOT_TOKEN o'rnatilmagan. Muhit o'zgaruvchisi sifatida bering."
         )
-    if ANTHROPIC_API_KEY == "SIZNING_ANTHROPIC_API_KEYINGIZ":
+    if ANTHROPIC_API_KEY == "ANTHROPIC_API_KEY":
         raise ValueError(
             "ANTHROPIC_API_KEY o'rnatilmagan. Muhit o'zgaruvchisi sifatida bering."
         )
@@ -136,7 +136,13 @@ def main():
     app.add_handler(CommandHandler("reset", reset_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_error_handler(error_handler)
- 
+
+    import asyncio
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())  
+        
     if USE_WEBHOOK:
         # Render (yoki boshqa hosting) muhitida — doimiy ishlab turishi uchun webhook
         webhook_url = f"{RENDER_EXTERNAL_URL}/{TELEGRAM_BOT_TOKEN}"
