@@ -15,7 +15,7 @@ import google.generativeai as genai
 # ============ SOZLAMALAR ============
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "SIZNING_TELEGRAM_TOKENINGIZ")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "SIZNING_GEMINI_API_KEYINGIZ")
-MODEL_NAME = "gemini-2.0-flash"  # tez va bepul kvotasi keng model
+MODEL_NAME = "gemini-3.6-flash"  # tez va bepul kvotasi keng model
 MAX_HISTORY_MESSAGES = 20
 PORT = int(os.getenv("PORT", "10000"))
  
