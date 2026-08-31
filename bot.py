@@ -1,6 +1,7 @@
 import os
-import asyncio
+import threading
 import logging
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -16,10 +17,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "SIZNING_TELEGRAM_TOKENINGI
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "SIZNING_ANTHROPIC_API_KEYINGIZ")
 MODEL_NAME = "claude-sonnet-4-5"
 MAX_HISTORY_MESSAGES = 20
-
 PORT = int(os.getenv("PORT", "10000"))
-RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "")
-USE_WEBHOOK = bool(RENDER_EXTERNAL_URL)
 
 # ============ SYSTEM PROMPT ============
 SYSTEM_PROMPT = """
@@ -102,15 +100,32 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_message = update.message.text
-
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-
     ai_reply = get_ai_response(user_id, user_message)
     await update.message.reply_text(ai_reply, parse_mode="Markdown")
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Xatolik yuz berdi: {context.error}")
+
+
+# ============ RENDER UCHUN "SOXTA" HTTP SERVER ============
+# Render Web Service turi portni ochishni talab qiladi, aks holda "port band emas" deb
+# xato beradi. Bot polling rejimida ishlaganda haqiqiy web server kerak emas,
+# shuning uchun faqat shu talabni qondirish uchun eng oddiy serverni orqa fonda ishga tushiramiz.
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot ishlab turibdi")
+
+    def log_message(self, format, *args):
+        pass  # ortiqcha loglarni bekor qilamiz
+
+
+def start_health_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthCheckHandler)
+    server.serve_forever()
 
 
 # ============ ASOSIY ISHGA TUSHIRISH ============
@@ -120,10 +135,9 @@ def main():
     if ANTHROPIC_API_KEY == "SIZNING_ANTHROPIC_API_KEYINGIZ":
         raise ValueError("ANTHROPIC_API_KEY o'rnatilmagan.")
 
-    try:
-        asyncio.get_event_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
+    # Portni ochib qo'yamiz, shunda Render servisni "tirik" deb hisoblaydi
+    threading.Thread(target=start_health_server, daemon=True).start()
+    logger.info(f"Health check server {PORT}-portda ishga tushdi")
 
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
@@ -132,18 +146,8 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_error_handler(error_handler)
 
-    if USE_WEBHOOK:
-        webhook_url = f"{RENDER_EXTERNAL_URL}/{TELEGRAM_BOT_TOKEN}"
-        logger.info(f"Bot webhook rejimida ishga tushdi: {webhook_url}")
-        app.run_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            url_path=TELEGRAM_BOT_TOKEN,
-            webhook_url=webhook_url,
-        )
-    else:
-        logger.info("Bot polling rejimida ishga tushdi (lokal muhit)...")
-        app.run_polling()
+    logger.info("Bot polling rejimida ishga tushdi...")
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
