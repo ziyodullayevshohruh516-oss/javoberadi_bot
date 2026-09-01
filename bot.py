@@ -103,14 +103,13 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_message = update.message.text
- 
+
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
- 
-        ai_reply = get_ai_response(user_id, user_message)
+
+    ai_reply = get_ai_response(user_id, user_message)
     try:
         await update.message.reply_text(ai_reply, parse_mode="Markdown")
     except Exception:
-        # Markdown formatlash xato bo'lsa, oddiy matn sifatida yuboramiz
         await update.message.reply_text(ai_reply)
  
  
